@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sistem Absensi & Nilai - Madrasah Sirojussu'adai</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(
+            rgba(57, 4, 95, 0.85),
+            rgba(0, 60, 40, 0.85)
+          ),
+          url("https://images.unsplash.com/photo-1604311795833-25b42c8552b4");
+        background-size: cover;
+        min-height: 100vh;
+      }
+      .header {
+        text-align: center;
+        color: #ffffff;
+        padding: 30px;
+      }
+      .container {
+        width: 95%;
+        margin: auto;
+      }
+      .card {
+        background: rgba(246, 243, 243, 0.96);
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      }
+      .table-container {
+        overflow-x: auto;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+      }
+      h3 {
+        text-align: center;
+        color: #000000;
+      }
+      button {
+        background: #1b5e20;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #2e7d32;
+      }
+      input,
+      select {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin: 5px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        background: #1b5e20;
+        color: white;
+        white-space: nowrap;
+        padding: 10px;
+      }
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .input-nilai {
+        width: 45px;
+        text-align: center;
+      }
+      .timestamp {
+        font-size: 0.85em;
+        color: #d32f2f;
+        font-weight: bold;
+      }
+      .mapel-label {
+        font-weight: bold;
+        color: #1b5e20;
+      }
+      .logout {
+        float: right;
+        background: #b71c1c;
+      }
+      .btn-delete {
+        background: #d32f2f;
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header">
+      <h1>Absensi & Nilai Madrasah Sirojussu'adai</h1>
+      <img src="logo_pondok-removebg-preview.png" width="150">
+      <p>Absensi Berbasis Mata Pelajaran & Waktu Real-time</p>
+    </div>
+
+    <div class="container">
+      <div class="card" id="loginBox">
+        <h3>Login Ustadz/Ustadzah</h3>
+        <center>
+          <input id="user" placeholder="Username" /><br /><br />
+          <input id="pass" type="password" placeholder="Password" /><br /><br />
+          <button onclick="login()">Masuk</button>
+        </center>
+      </div>
+
+      <div id="dashboard" style="display: none">
+        <div class="card">
+          <button class="logout" onclick="logout()">Logout</button>
+          <h3>Ustadz/ustadzah: <span id="namaUstadz"></span></h3>
+
+          <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center;">
+            <div>
+              <label>Kelas:</label>
+              <select id="kelas" onchange="refreshData()">
+                <option>1</option>
+                <option>2</option>
+                <option>3A</option>
+                <option>3B</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Tanggal:</label>
+              <input type="date" id="tanggal" onchange="refreshData()" />
+            </div>
+
+            <div>
+              <label class="mapel-label">Mata Pelajaran:</label>
+              <select id="mapelAbsen" onchange="refreshData()"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="text-align: center">
+          <button onclick="showSection('absensiBox')">Menu Absensi</button>
+          <button onclick="showSection('nilaiBox')">Input 35 Nilai Mapel</button>
+          <button onclick="showRekap()">Lihat Rekap Semua</button>
+          <button onclick="pdfRekap()" style="background: #c62828">Unduh PDF Rekap</button>
+        </div>
+
+        <div class="card" id="absensiBox">
+          <h3 id="judulAbsen">Absensi Santri</h3>
+          <div id="statusSimpanTerakhir" class="timestamp" style="text-align: center; margin-bottom: 10px"></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nama Santri</th>
+                  <th>Status Kehadiran</th>
+                </tr>
+              </thead>
+              <tbody id="absenTable"></tbody>
+            </table>
+          </div>
+          <br />
+          <button onclick="simpanAbsensi()">💾 Simpan Absensi Pelajaran</button>
+        </div>
+
+        <div class="card" id="nilaiBox" style="display: none">
+          <h3>Input Nilai 35 Mata Pelajaran</h3>
+          <div class="table-container">
+            <table>
+              <thead id="headNilai"></thead>
+              <tbody id="nilaiTable"></tbody>
+            </table>
+          </div>
+          <br />
+          <button onclick="simpanNilai()">💾 Simpan Semua Nilai</button>
+        </div>
+
+        <div class="card" id="rekapBox" style="display: none">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Rekapitulasi Absensi & Log Mata Pelajaran</h3>
+            <button class="btn-delete" onclick="hapusSemuaRekap()">Hapus Semua Rekap Hari Ini</button>
+          </div>
+          <div id="rekapData"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const daftarMapel = [
+        "Nashoibul Ibad", "Alfiyah 1", "Alfiyah 2", "Fathul Qarib", "Arbai'in",
+        "Khulasoh Jilid 1", "Khulasoh Jilid 2", "Tukhfatul Atfal", "Akhlaqul Lilbanin 2",
+        "Riyadul Badiah", "Tijan", "Sulamuttaufiq", "Fiqih", "Nahwu", "Shoibul Iman",
+        "Kifayatul Awam", "Ta'lim Muta'alim", "Al Imrithi", "Shorof", "Qowaid",
+        "Aqidatul Awam", "Hidayatussibyan"
+      ];
+
+      const ustadz = {
+        ustadz1aufa: "aufa", ustadz2ghofur: "ghofur", ustadz3nyiam: "Syiam",
+        ustadz4neris: "neris", ustadz5ardi: "ardi", ustadz6haikal: "haikal",
+        ustadz7jalal: "jalal", ustadz8slamet: "slamet", ustadz9gheby: "gheby",
+        ustadz10faqih: "faqih", ustadz11fadil: "fadil", ustadz12ravi: "ravi",
+        ustadz13riski: "riski", ustadz14febrian: "febrian", ustadzah15dyah: "dyah",
+        ustadzah16sakinah: "sakinah"
+      };
+
+      const santriKelas = {
+        1: ["Abdul Hamid", "Afsar Fehriansyah", "Alan Fauzi", "Alif Maulana Putra", "Azfar Fehriansyah", "Badruzzaman", "Devano Ramadhan", "Faiz Azhar", "Ibnu Wijdan Asshiddiq", "Muhammad Rifqi Hamdani", "M. Salman Assaidan", "Mohammad Alfin Asyrofi", "Muhammad Aniq", "Muhammad Samsuri", "Muhammad Zidane Maulana", "Mumta'az Ahmad Naufal", "Sandi Amar", "Sultan Mahmud Mawardi", "Trio Cahya Alviano", "Wahyu Ghani", "Aisya Syazfa Myesya", "Andini Triyani", "Aqilla Jasmine Mazaya", "Athiyah Mirzani", "Aulia Rahma Saepudin", "Dini Nabilah", "Erni Fasikhatul Jannah", "Ersa Nabila Tunnisah"],
+        2: ["Ahmad Nizar Muafy", "Abdillah Yusman", "Ahmad Sofiyudin", "Muhammad Farhan Azzidan", "Shadad Al Farizi", "Adinda Lutfiyatun Nisa", "Aelka Azra Khoeru. K", "Alayna Ul Hikmah", "Alfi Lailah", "Anala Maemunah", "Andini Maulida. R", "Ani Patin", "Azkiyatus Syifa. M", "Azmiatus Zahro", "Dela Amelia. J", "Dewi Fatimah. A", "Keysha Hasna. N", "Khofifah Salsabila", "Latifah Nur Aini", "Nur Febriyanti", "Rasti Michela Putri", "Saniatu Zulfa", "Sayidatul Fadhilah", "Sofwatul Marwah", "Sri Sofiyatul", "Talita Stania. H", "Zainunah", "Zelika Naura. A"],
+        "3A": ["Ahmad Khaeron Nizam", "Aldiansyah Junaedi", "Bagus Prabowo", "Faiz Subhani", "Fathul Muiz Ramdhani", "Ghizlan Tsaqif Hamazie", "Ilham Fraditia", "Ilham Mubarok", "Jahan Achmad. M", "Lutfi jayadi", "M. Ali Nur Abdillah", "Muhammad Aniq", "M. Billy Zaelani", "M. Daefa Adzim", "M. Farhan Hafidz", "M. Minhajul Qowim", "M. Sholehur Rozaki", "Maulana Arif Hidayah", "M. Khoerul Fahmi Elsom", "Noval Ibnu Rochman", "Ridho Hilman Samsudin", "Rifal Dwi Nanda", "Sa'id Ali Imron", "safgan Aliyana"],
+        "3B": ["Aprilia Nugi Kartika", "Aviza Amanda. P", "Bela Putri. P", "Ceratiwi", "Dela ayu", "Dian Wahyuni", "Diandra Latifah. A", "Eva Nurfaizah", "Firda Fania. A", "Husna Marzaqoh", "Inneke Alya. K", "Ishlahati Ibbahatun. A", "Ismi Putri. S", "Jihan Sandora", "Maulidia Sintia. M", "Nabilah", "Nayla Karisma Najwa", "Neysa Aqilla. P", "Nur Marwah", "Nurul Hikmah. A", "Ratri Pramudita", "Raya Aulia. R", "Rindu Saskin. P", "Rizmaniar Syah Altafunitsa", "Rosalina Surani", "Salsabila Alazizah", "Savana Alya. R", "Syarifah. R", "Syifa Hayu Alayna", "Yola Anggraeni", "Zahrotul Kauni"],
+        4: ["Aji Bumi", "Anisa Rahma Hidayatun", "Diana Mumtazah", "Firyal Afif Nur Isnan", "Hamdan Shalehuddin", "Karinah", "Marsya Khusnul Khotimah", "MukhAmad Prasetyo", "Nikiyan Gendis Aurani", "Putri Awaliyah", "Raffi Rizki Pradita", "Sayidah Nafisah", "Selma Pesona Wardah", "Syafa'atul Aulia", "Tiara Amalia Saerani", "Zahratunnisa", "Zahrotul Aulia", "Zelda Aufa Firsya Widodo"],
+        5: ["Ahmad Ezar Fadhilah", "Ahmad Kamaalie", "Ahmad Ribkhi Sholahuddin", "Akaila Taqiya. Ch", "Alfiatus Sa'adah", "Bilqis Silmi Kaaffah", "Evi Kusumawati", "Fairuz Al- Afasy", "Fathir Najbullah Amr Tyo", "Fatmah Hudayani", "Ida Solikha", "M. Rifqi Adha", "Najwa Zahrotal Kaun Amin", "Siti Khumaeroh", "Syifa Azhar Rif'at", "Umdatus Sholihah", "Wifiq El- zahwatul. A", "Windita Leiyuniva", "Zahira Khumaerah", "Zakiyatun Nufus"],
+        6: ["Fahri Faturrahman", "Fadlah Aini", "Ienie Yabnata birr", "Mella Zulia Zahra", "Mughnia Rokhmah"]
+      };
+
+      const selectMapel = document.getElementById("mapelAbsen");
+      daftarMapel.forEach((m) => {
+        let opt = document.createElement("option");
+        opt.value = m;
+        opt.innerHTML = m;
+        selectMapel.appendChild(opt);
+      });
+
+      document.getElementById("tanggal").valueAsDate = new Date();
+
+      function login() {
+        if (ustadz[user.value] == pass.value) {
+          loginBox.style.display = "none";
+          dashboard.style.display = "block";
+          namaUstadz.innerText = user.value;
+          refreshData();
+        } else alert("Login Gagal!");
+      }
+
+      function logout() { location.reload(); }
+
+      function refreshData() {
+        judulAbsen.innerText = "Absensi Pelajaran: " + mapelAbsen.value;
+        buatAbsensi();
+        buatNilai();
+      }
+
+      function showSection(id) {
+        absensiBox.style.display = "none";
+        nilaiBox.style.display = "none";
+        rekapBox.style.display = "none";
+        document.getElementById(id).style.display = "block";
+      }
+
+      function keyAbsensi() {
+        return "absensi_" + kelas.value + "_" + tanggal.value + "_" + mapelAbsen.value;
+      }
+
+      function simpanAbsensi() {
+        let d = [];
+        let sekarang = new Date();
+        let waktuSimpan = sekarang.getDate() + "/" + (sekarang.getMonth() + 1) + "/" + sekarang.getFullYear() + " Jam " + sekarang.getHours().toString().padStart(2, "0") + ":" + sekarang.getMinutes().toString().padStart(2, "0");
+
+        document.querySelectorAll("#absenTable tr").forEach((r) => {
+          d.push({ nama: r.children[0].innerText, status: r.children[1].children[0].value });
+        });
+
+        localStorage.setItem(keyAbsensi(), JSON.stringify({ waktu: waktuSimpan, mapel: mapelAbsen.value, data: d }));
+        statusSimpanTerakhir.innerText = `Tersimpan: ${mapelAbsen.value} pada ${waktuSimpan}`;
+        alert(`Absensi ${mapelAbsen.value} berhasil disimpan!`);
+      }
+
+      function buatAbsensi() {
+        absenTable.innerHTML = "";
+        santriKelas[kelas.value].forEach((s) => {
+          absenTable.innerHTML += `<tr><td>${s}</td><td><select><option>Hadir</option><option>Alfa</option><option>Izin</option><option>Sakit</option></select></td></tr>`;
+        });
+        loadAbsensi();
+      }
+
+      function loadAbsensi() {
+        statusSimpanTerakhir.innerText = "";
+        let storage = localStorage.getItem(keyAbsensi());
+        if (!storage) return;
+        let paket = JSON.parse(storage);
+        statusSimpanTerakhir.innerText = `Data Terakhir: ${paket.mapel} (${paket.waktu})`;
+        document.querySelectorAll("#absenTable tr").forEach((r, i) => {
+          if (paket.data[i]) r.children[1].children[0].value = paket.data[i].status;
+        });
+      }
+
+      function buatNilai() {
+        let headerHTML = "<tr><th>Nama Santri</th>";
+        daftarMapel.forEach((m) => { headerHTML += `<th>${m}</th>`; });
+        headerHTML += "</tr>";
+        headNilai.innerHTML = headerHTML;
+        nilaiTable.innerHTML = "";
+        santriKelas[kelas.value].forEach((s) => {
+          let row = `<tr><td>${s}</td>`;
+          daftarMapel.forEach((m, idx) => { row += `<td><input class="input-nilai" data-idx="${idx}"></td>`; });
+          row += `</tr>`;
+          nilaiTable.innerHTML += row;
+        });
+        loadNilai();
+      }
+
+      function simpanNilai() {
+        let d = [];
+        document.querySelectorAll("#nilaiTable tr").forEach((r) => {
+          let skor = {};
+          r.querySelectorAll(".input-nilai").forEach((inp) => { skor[daftarMapel[inp.dataset.idx]] = inp.value; });
+          d.push({ nama: r.children[0].innerText, skor: skor });
+        });
+        localStorage.setItem("nilai_" + kelas.value, JSON.stringify(d));
+        alert("Nilai 35 Mapel disimpan!");
+      }
+
+      function loadNilai() {
+        let d = JSON.parse(localStorage.getItem("nilai_" + kelas.value));
+        if (!d) return;
+        document.querySelectorAll("#nilaiTable tr").forEach((r, i) => {
+          if (d[i] && d[i].skor) {
+            r.querySelectorAll(".input-nilai").forEach((inp) => {
+              inp.value = d[i].skor[daftarMapel[inp.dataset.idx]] || "";
+            });
+          }
+        });
+      }
+
+      // FITUR REKAP DENGAN FUNGSI HAPUS
+      function showRekap() {
+        showSection("rekapBox");
+        rekapData.innerHTML = "";
+        Object.keys(santriKelas).forEach((k) => {
+          rekapData.innerHTML += `<h4>--- KELAS ${k} (${tanggal.value}) ---</h4>`;
+          let adaData = false;
+          daftarMapel.forEach((m) => {
+            let key = "absensi_" + k + "_" + tanggal.value + "_" + m;
+            let storage = localStorage.getItem(key);
+            if (storage) {
+              adaData = true;
+              let paket = JSON.parse(storage);
+              rekapData.innerHTML += `
+                <div style="background:#e8f5e9; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #c8e6c9;">
+                  <button class="btn-delete" style="float:right;" onclick="hapusSatuRekap('${key}')">Hapus</button>
+                  <span class="mapel-label">${m}</span> <span class="timestamp">(${paket.waktu})</span><br>
+                  <small>${paket.data.map(s => `${s.nama}(<b>${s.status.charAt(0)}</b>)`).join(', ')}</small>
+                </div>`;
+            }
+          });
+          if (!adaData) rekapData.innerHTML += "<i>Belum ada data.</i>";
+          rekapData.innerHTML += "<hr>";
+        });
+      }
+
+      function hapusSatuRekap(key) {
+        if (confirm("Hapus data absensi pelajaran ini?")) {
+          localStorage.removeItem(key);
+          showRekap();
+          refreshData();
+        }
+      }
+
+      function hapusSemuaRekap() {
+        if (confirm("PERINGATAN: Hapus SEMUA data absensi di tanggal " + tanggal.value + "?")) {
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes("absensi_") && key.includes(tanggal.value)) {
+              localStorage.removeItem(key);
+            }
+          });
+          showRekap();
+          refreshData();
+        }
+      }
+
+      function pdfRekap() {
+        const { jsPDF } = window.jspdf;
+        let pdf = new jsPDF();
+        let y = 15;
+        pdf.text("REKAP ABSENSI HARIAN PER MAPEL", 60, y);
+        y += 10;
+        Object.keys(santriKelas).forEach((k) => {
+          pdf.setFontSize(12);
+          pdf.text(`KELAS: ${k} - TANGGAL: ${tanggal.value}`, 10, y);
+          y += 7;
+          daftarMapel.forEach((m) => {
+            let storage = localStorage.getItem("absensi_" + k + "_" + tanggal.value + "_" + m);
+            if (storage) {
+              let paket = JSON.parse(storage);
+              pdf.setFontSize(10);
+              pdf.setTextColor(27, 94, 32);
+              pdf.text(`Pelajaran: ${m} (Waktu Simpan: ${paket.waktu})`, 12, y);
+              y += 5;
+              pdf.setTextColor(0, 0, 0);
+              let txtAbsen = paket.data.map(s => `${s.nama}(${s.status.charAt(0)})`).join(', ');
+              let splitTxt = pdf.splitTextToSize(txtAbsen, 180);
+              pdf.text(splitTxt, 15, y);
+              y += splitTxt.length * 5 + 2;
+              if (y > 270) { pdf.addPage(); y = 15; }
+            }
+          });
+          y += 5;
+        });
+        pdf.save("Rekap_Absen_" + tanggal.value + ".pdf");
+      }
+    </script>
+  </body>
+</html>
